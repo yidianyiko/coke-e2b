@@ -1,0 +1,4 @@
+interface:
+  display_name: "Coke Browser Use"
+  short_description: "Use the Coke browser runtime with verified observations"
+  default_prompt: "Use $browser-use to complete the authorized browser task with current tool contracts and verified page evidence."

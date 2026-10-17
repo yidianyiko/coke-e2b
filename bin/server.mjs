@@ -1,0 +1,24 @@
+#!/usr/bin/env node
+import {createIntegrationService} from '../src/integration-service.mjs';
+import {publicHttpUrl} from '../src/public-network.mjs';
+import {createBrowserGateway} from '../src/browser-gateway.mjs';
+import {readFile,stat} from 'node:fs/promises';
+import {resolve} from 'node:path';
+import {createCapacity,createTaskManager} from '../src/online-task-manager.mjs';
+import {createOnlineServer} from '../src/online-server.mjs';
+import {createVaultLoginLinks} from '../src/vault-login-links.mjs';
+import {VaultStore} from '../src/vault-store.mjs';
+import {createLoginManager} from '../src/login-manager.mjs';
+const authPath=process.env.COKE_AUTH_FILE;if(!authPath)throw new Error('COKE_AUTH_FILE_REQUIRED');
+if((await stat(authPath)).mode&0o077)throw new Error('AUTH_FILE_MUST_BE_PRIVATE');
+const tokens=JSON.parse(await readFile(authPath,'utf8'));if(!Array.isArray(tokens)||!tokens.length||tokens.some(t=>typeof t.token!=='string'||t.token.length<24||typeof t.userId!=='string'||!t.userId||t.userId.length>128)||new Set(tokens.map(t=>t.token)).size!==tokens.length)throw new Error('INVALID_AUTH_FILE');
+const dataDir=resolve(process.env.COKE_DATA_DIR||'.coke-private/online'),capacity=createCapacity(),allowedHosts=(process.env.COKE_ALLOWED_HOSTS||'ticktick.com,www.ticktick.com').split(',');
+const browserGateway=createBrowserGateway();
+const manager=await createTaskManager({browserGateway,dataDir,capacity,users:tokens.map(t=>t.userId),model:process.env.COKE_MODEL||'glm-5.3'});
+const loginManager=await createLoginManager({capacity,dataDir,allowedOrigins:allowedHosts.map(h=>'https://'+h)});
+const vault=new VaultStore(resolve(dataDir,'vault'));
+const loginLinks=createVaultLoginLinks({manager,loginManager,vault});
+const integrationService=process.env.COKE_INTEGRATION_TOKEN?await createIntegrationService({manager,loginLinks,dataDir,serviceToken:process.env.COKE_INTEGRATION_TOKEN,publicBaseUrl:process.env.COKE_PUBLIC_BASE_URL,validateTarget:async url=>{publicHttpUrl(url)}}):undefined;
+const server=createOnlineServer({integrationService,browserGateway,manager,loginManager,loginLinks,tokens,allowedHosts});
+server.listen(Number(process.env.COKE_PORT||3210),process.env.COKE_HOST||'127.0.0.1',()=>process.stdout.write('Online runtime ready\n'));
+let stopping=false;for(const signal of ['SIGINT','SIGTERM'])process.on(signal,async()=>{if(stopping)return;stopping=true;server.close();await loginLinks.close();await Promise.all([manager.close(),loginManager.close()]);server.closeAllConnections()});

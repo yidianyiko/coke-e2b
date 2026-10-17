@@ -1,0 +1,14 @@
+*
+!Dockerfile
+!package.json
+!package-lock.json
+!bin/
+!bin/**
+!src/
+!src/**
+!web/
+!web/**
+!.agents/
+!.agents/skills/
+!.agents/skills/browser-use/
+!.agents/skills/browser-use/**

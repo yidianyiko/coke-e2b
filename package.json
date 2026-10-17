@@ -1,0 +1,25 @@
+{
+  "name": "coke-e2b",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "coke": "./bin/coke.mjs"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "e2b": "^2.56.0",
+    "playwright-core": "1.64.1"
+  },
+  "description": "E2B task sandbox and leased Playwright browser agent runtime",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yidianyiko/coke-e2b.git"
+  }
+}

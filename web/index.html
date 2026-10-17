@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Coke 浏览器工作台</title><style>
+body{font:16px system-ui;max-width:1080px;margin:32px auto;padding:0 20px;background:#f5f7fa;color:#172132}section{background:white;padding:22px;margin:18px 0;border:1px solid #dce2ea;border-radius:10px}label{display:block;margin:12px 0}input,textarea,button{font:inherit;padding:9px;border:1px solid #abb6c5;border-radius:5px}input,textarea{box-sizing:border-box;width:100%}button{cursor:pointer;background:#eef3ff;margin:4px 6px 4px 0}button:disabled{opacity:.5}#screen{max-width:100%;border:1px solid #ccc;cursor:crosshair}pre{white-space:pre-wrap;overflow-wrap:anywhere}small{color:#526175}.row{display:flex;gap:12px}.row>*{flex:1}#status{min-height:24px}a{color:#174ebc}
+</style><script src="/app.js" defer></script></head><body>
+<h1>Coke 浏览器工作台</h1><p>远程登录 TickTick，然后让 Agent 读取任务并导出报告。</p>
+<section><h2>连接</h2><label>访问令牌<input id="token" type="password" autocomplete="off"></label><button id="connect">连接</button><small>令牌只保存在当前页面内存中，刷新后需要重新输入。</small></section>
+<p id="status" role="status"></p>
+<section><h2>1. 登录 TickTick</h2><div class="row"><label>登录页<input id="url" value="https://ticktick.com/signin"></label><label>会话名称<input id="profile" value="ticktick" maxlength="64"></label></div><button id="start">打开登录页面</button><button id="refresh">刷新截图</button><button id="save">确认保存登录状态</button><button id="cancelLogin">取消登录</button><button id="revoke">撤销已保存状态</button>
+<p><small>点击截图定位输入框，再在下方输入内容。登录状态只有点击“确认保存”后才会保存。10 分钟未完成会自动取消。</small></p><img id="screen" alt="远程浏览器截图" hidden>
+<label>输入到远程浏览器（发送后清空）<input id="typing" type="password" autocomplete="off"></label><button id="type">发送输入</button><button data-key="Tab">Tab</button><button data-key="Enter">Enter</button><button data-key="Backspace">退格</button><button data-key="Escape">Esc</button><button data-key="ControlOrMeta+A">全选</button><button id="up">向上滚动</button><button id="down">向下滚动</button>
+</section>
+<section><h2>2. 执行只读任务</h2><label>任务<textarea id="task" rows="4">打开 TickTick 的 Today，读取今日未完成任务的标题和页面显示的日期。不要修改任务。将结果写入 report.txt，读回核对，再返回页面中可核验的标题。</textarea></label><button id="createLink">生成凭证授权链接并继续任务</button><p id="loginLink"></p><button id="run">运行任务</button><button id="cancelTask">取消任务</button><pre id="result"></pre><div id="artifacts"></div></section>
+</body></html>
