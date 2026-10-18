@@ -196,7 +196,10 @@ async function run(options) {
     call = async (route, action, payload = {}, bypassRemote = false) => {
       if (cancellation.signal.aborted && action !== 'release' && !bypassRemote) throw cancellation.signal.reason;
       let request = { userId: options.user, taskId, leaseId, action, ...payload };
-      if (sandbox && !bypassRemote && (gatewayReady || !process.env.COKE_BROWSER_GATEWAY_URL) && action !== 'release') {
+      // Screenshots are host-owned artifacts. Sending their multi-MiB PNGs to
+      // E2B and back through command stdout can exhaust the remote deadline.
+      // Capture on the same scoped lease; E2B still executes page interactions.
+      if (sandbox && !bypassRemote && (gatewayReady || !process.env.COKE_BROWSER_GATEWAY_URL) && action !== 'release' && action !== 'screenshot') {
         let command;
         try {command = await sandbox.commands.run(`node ${E2B_CLI_PATH} browser ${action}`, {
           envs: { COKE_TOOL_REQUEST: JSON.stringify(request), ...(gatewayReady ? {COKE_BROWSER_GATEWAY_URL:process.env.COKE_BROWSER_GATEWAY_URL,COKE_BROWSER_GATEWAY_TOKEN:gatewayToken} : {}) },
@@ -234,9 +237,10 @@ async function run(options) {
         signal: bypassRemote ? AbortSignal.timeout(5_000) : cancellation.signal,
       });
       const data = await response.json();
+      const source = sandbox && !bypassRemote && action !== 'screenshot' ? 'e2b-cli' : 'local-cli';
       trace.push(response.ok
-        ? { action, ok: true, source: sandbox && !bypassRemote ? 'e2b-cli' : 'local-cli', result: traceResult(action, data) }
-        : { action, ok: false, source: sandbox && !bypassRemote ? 'e2b-cli' : 'local-cli', error: data.error?.code });
+        ? { action, ok: true, source, result: traceResult(action, data) }
+        : { action, ok: false, source, error: data.error?.code });
       if (!response.ok) throw new Error(`${data.error.code}: ${data.error.message || ''}`.trim());
       return data;
     };
