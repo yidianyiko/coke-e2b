@@ -62,13 +62,23 @@ export async function prepareVaultContext(context,{origin,fixture=false}={}){
 export async function vaultBrowserAction(page,input,{origin,fixture=false}={}){
  if(!validOrigin(origin,fixture)||!['login','code','status'].includes(input?.action))return out('verification_required');
  try{
+  const actionDeadline=Date.now()+11000;
   if(!await sameOrigin(page,origin))return out('verification_required');
   const context=page.context();
   await prepareVaultContext(context,{origin,fixture});
   const guard=guarded.get(context);
   if(guard.origin!==origin)return out('verification_required');
   for(const value of [input.email,input.password,input.code])if(typeof value==='string'&&value)guard.secrets.add(value);
-  const initial=await inspect(page,origin);
+  let initial=await inspect(page,origin);
+  // Navigation commits before the signin application's scripts render the form.
+  // Keep this request alive so credentials are filled once readiness is known.
+  if(input.action==='login'&&initial==='pending'){
+   const readyDeadline=Date.now()+6500;
+   while(initial==='pending'&&Date.now()<readyDeadline){
+    await new Promise(r=>setTimeout(r,50));
+    initial=await inspect(page,origin);
+   }
+  }
   if(input.action==='status'||initial==='authenticated'||initial==='verification_required')return out(initial);
   if(input.action==='login'){
    if(initial!=='login_required')return out(initial);
@@ -97,7 +107,7 @@ export async function vaultBrowserAction(page,input,{origin,fixture=false}={}){
   try{
    if(!await sameOrigin(page,origin))return out('verification_required');
    await page.getByRole('button',{name:input.action==='login'?'Sign In':'Verification',exact:true}).click({timeout:1500,noWaitAfter:true});
-   const deadline=Date.now()+6500;
+   const deadline=Math.min(Date.now()+6500,actionDeadline);
    while(Date.now()<deadline){
     if(responseState)return out(responseState);
     const state=await inspect(page,origin);

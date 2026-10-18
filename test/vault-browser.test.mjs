@@ -84,3 +84,10 @@ test('authenticated webapp profile response works without legacy SiteStatus; URL
  let mode='valid';const server=createServer((req,res)=>{if(req.url==='/api/v2/user/profile'){res.writeHead(mode==='unauthorized'?401:200,{'content-type':'application/json'});res.end(JSON.stringify(mode==='mfa'?{authId:'not-authenticated'}:{userCode:'fixture-user',username:'fixture@example.com'}));return}res.setHeader('content-type','text/html');if(req.url==='/webapp/'){res.end(`<script>fetch('/api/v2/user/profile')</script><h1>App</h1>`);return}res.end(form+`<script>document.querySelector('button').onclick=()=>location.href='/webapp/'</script>`)});await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin=`http://127.0.0.1:${server.address().port}`;const browser=await chromium.launch({executablePath:process.env.COKE_CHROMIUM_PATH||'/usr/bin/chromium-browser',args:['--no-sandbox']});
  try{for(const variant of ['valid','unauthorized','mfa']){mode=variant;const context=await browser.newContext({serviceWorkers:'block'});await prepareVaultContext(context,{origin,fixture:true});const page=await context.newPage();await page.goto(origin);const result=await vaultBrowserAction(page,{action:'login',email:'fixture@example.com',password:'fixture-password'},{origin,fixture:true});assert.equal(result.status,variant==='valid'?'authenticated':'pending');await context.close()}}finally{await browser.close();server.closeAllConnections();await new Promise(r=>server.close(r))}
 });
+
+test('credential submission waits for delayed signin form and submits exactly once',()=>fixture(async(page,origin)=>{
+ await page.setContent(`<div>Loading</div><script>setTimeout(()=>{document.body.innerHTML=${JSON.stringify(form)};document.querySelector('button').onclick=()=>{window.submissions=(window.submissions||0)+1;window.SiteStatus={isLogin:true,userCode:'fixture-user'}}},300)</script>`);
+ const result=await vaultBrowserAction(page,{action:'login',email:'fixture@example.com',password:'fixture-password'},{origin,fixture:true});
+ assert.deepEqual(result,{status:'authenticated'});
+ assert.equal(await page.evaluate(()=>window.submissions),1);
+}));
