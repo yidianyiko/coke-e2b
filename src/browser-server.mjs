@@ -4,6 +4,7 @@ import { ProfileStore, profileDescriptor } from './profile-store.mjs';
 import { vaultBrowserAction, prepareVaultContext } from './vault-browser.mjs';
 import { createPublicNetworkProxy, publicHttpUrl } from './public-network.mjs';
 import { chromium } from 'playwright-core';
+import { captureBrowserScreenshot } from './browser-screenshot.mjs';
 
 const token = process.env.COKE_BROWSER_TOKEN;
 if (!token) throw new Error('COKE_BROWSER_TOKEN is required');
@@ -261,7 +262,12 @@ async function handle(request, response) {
         break;
       }
       case 'screenshot': {
-        const bytes = await page.screenshot({ fullPage: true });
+        let bytes;
+        try { bytes = await captureBrowserScreenshot(page); }
+        catch (error) {
+          reply(response, 422, {error:{code:error.message === 'BROWSER_SCREENSHOT_TIMEOUT' ? 'BROWSER_SCREENSHOT_TIMEOUT' : 'BROWSER_SCREENSHOT_FAILED'}});
+          break;
+        }
         reply(response, 200, { url: page.url(), pngBase64: bytes.toString('base64') });
         break;
       }

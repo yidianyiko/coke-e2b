@@ -9,3 +9,12 @@ test('remote CLI errors retain only known safe browser codes from command result
  }
  for(const stderr of ['raw secret', '{"error":{"code":"private-secret"}}']) assert.equal(remoteBrowserFailure({stderr}).message,'REMOTE_CLI_FAILED: browser action failed');
 });
+
+test('actual E2B SDK timeout is distinct from a browser action failure', async () => {
+ const {TimeoutError, CommandExitError} = await import('e2b');
+ const timeout = remoteBrowserFailure(new TimeoutError('private request details'));
+ assert.equal(browserFailureCode(timeout), 'BROWSER_REMOTE_COMMAND_TIMEOUT');
+ assert.equal(timeout.message, 'BROWSER_REMOTE_COMMAND_TIMEOUT: browser action failed');
+ const exit = new CommandExitError({exitCode:1,stdout:'',stderr:'{"error":{"code":"BROWSER_SCREENSHOT_TIMEOUT"}}'});
+ assert.equal(browserFailureCode(remoteBrowserFailure(exit)), 'BROWSER_SCREENSHOT_TIMEOUT');
+});
